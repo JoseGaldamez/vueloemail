@@ -1,0 +1,15 @@
+Analyzing vueloemail...                                         
+
+  error - The getter 'isOkStatus' isn't defined for the type 'List<Capability>' - lib\services\mail_service.dart:17:23 - undefined_getter
+  error - 2 positional arguments expected by 'fetchMessages', but 1 found - lib\services\mail_service.dart:43:22 - not_enough_positional_arguments
+  error - The named parameter 'buildBodyElements' isn't defined - lib\services\mail_service.dart:44:9 - undefined_named_parameter
+  error - The named parameter 'fetchPreference' isn't defined - lib\services\mail_service.dart:46:9 - undefined_named_parameter
+warning - Dead code - lib\services\mail_service.dart:51:34 - dead_code
+warning - The left operand can't be null, so the right operand is never executed - lib\services\mail_service.dart:51:37 - dead_null_aware_expression
+  error - The getter 'selectedMailbox' isn't defined for the type 'ImapClient' - lib\services\mail_service.dart:91:30 - undefined_getter
+  error - 2 positional arguments expected by 'fetchMessages', but 1 found - lib\services\mail_service.dart:102:22 - not_enough_positional_arguments
+  error - The named parameter 'buildBodyElements' isn't defined - lib\services\mail_service.dart:103:9 - undefined_named_parameter
+  error - The named parameter 'fetchPreference' isn't defined - lib\services\mail_service.dart:104:9 - undefined_named_parameter
+warning - Dead code - lib\services\mail_service.dart:109:34 - dead_code
+warning - The left operand can't be null, so the right operand is never executed - lib\services\mail_service.dart:109:37 - dead_null_aware_expression
+
