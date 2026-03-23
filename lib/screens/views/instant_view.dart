@@ -90,6 +90,7 @@ class InstantView extends StatelessWidget {
         final msgs = conversations[jid]!;
         final lastMsg = msgs.last;
         final contact = _findContact(xmpp.contacts, jid);
+        final isUnread = xmpp.hasUnreadMessages(jid);
 
         return ListTile(
           leading: Stack(
@@ -127,23 +128,56 @@ class InstantView extends StatelessWidget {
           ),
           title: Text(
             contact.displayName,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+            style: TextStyle(
+              fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+              color: isUnread ? Colors.black : Colors.black87,
+            ),
           ),
           subtitle: Text(
             lastMsg.isMe ? 'Tú: ${lastMsg.body}' : lastMsg.body,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-          ),
-          trailing: Text(
-            _formatTime(lastMsg.timestamp),
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-          ),
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChatScreen(jid: jid, name: contact.displayName),
+            style: TextStyle(
+              fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+              color: isUnread ? Colors.black87 : Colors.grey.shade600,
             ),
           ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _formatTime(lastMsg.timestamp),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isUnread
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.grey.shade500,
+                  fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+              if (isUnread) ...[
+                const SizedBox(height: 4),
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          onTap: () {
+            xmpp.markAsRead(jid);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChatScreen(jid: jid, name: contact.displayName),
+              ),
+            );
+          },
         );
       },
     );

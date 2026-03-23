@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:vueloemail/screens/login_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/email_provider.dart';
 import 'services/xmpp_service.dart';
-import 'screens/registration_screen.dart';
+import 'services/notification_service.dart';
 import 'screens/dashboard_screen.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize NotificationService
+  await NotificationService().init();
 
   // Initialize AuthProvider securely
   final authProvider = AuthProvider();
@@ -40,7 +44,7 @@ class VueloApp extends StatelessWidget {
           if (auth.isAuthenticated) {
             return const DashboardScreen();
           } else {
-            return const RegistrationScreen();
+            return const LoginScreen();
           }
         },
       ),

@@ -1,6 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../models/email_message.dart';
+import '../models/chat_message.dart';
+import '../models/roster_contact.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
@@ -21,12 +23,16 @@ class DatabaseService {
 
     return await openDatabase(
       path,
-      version: 3, // v3: añade columna userEmail para soporte multi-usuario
+      version: 4, // v4: añade soporte para chat y contactos
       onCreate: _onCreate,
       onUpgrade: (db, oldVersion, newVersion) async {
-        // Drop and recreate to ensure clean multi-user schema
-        await db.execute('DROP TABLE IF EXISTS emails');
-        await _onCreate(db, newVersion);
+        if (oldVersion < 3) {
+          await db.execute('DROP TABLE IF EXISTS emails');
+          await _onCreate(db, newVersion);
+        } else if (oldVersion == 3) {
+          // Si venimos de v3, solo necesitamos crear las nuevas tablas
+          await _createChatTables(db);
+        }
       },
     );
   }
@@ -50,7 +56,84 @@ class DatabaseService {
         PRIMARY KEY (id, boxName, userEmail)
       )
     ''');
+    await _createChatTables(db);
   }
+
+  Future<void> _createChatTables(Database db) async {
+    await db.execute('''
+      CREATE TABLE chat_messages (
+        id TEXT PRIMARY KEY,
+        fromJid TEXT,
+        toJid TEXT,
+        body TEXT,
+        timestamp TEXT,
+        isMe INTEGER,
+        isRead INTEGER,
+        userEmail TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE contacts (
+        jid TEXT,
+        name TEXT,
+        userEmail TEXT,
+        PRIMARY KEY (jid, userEmail)
+      )
+    ''');
+  }
+
+  // ── Chat Persistence ──────────────────────────────────────────────────────
+
+  Future<void> insertChatMessage(ChatMessage msg, String userEmail) async {
+    final db = await database;
+    final map = msg.toMap();
+    map['userEmail'] = userEmail;
+    await db.insert('chat_messages', map,
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<ChatMessage>> getChatMessages(String userEmail) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'chat_messages',
+      where: 'userEmail = ?',
+      whereArgs: [userEmail],
+      orderBy: 'timestamp ASC',
+    );
+    return List.generate(maps.length, (i) => ChatMessage.fromMap(maps[i]));
+  }
+
+  Future<void> markChatAsRead(String otherJid, String userEmail) async {
+    final db = await database;
+    await db.update(
+      'chat_messages',
+      {'isRead': 1},
+      where: 'userEmail = ? AND (fromJid = ? OR toJid = ?) AND isMe = 0',
+      whereArgs: [userEmail, otherJid, otherJid],
+    );
+  }
+
+  // ── Contact Persistence ───────────────────────────────────────────────────
+
+  Future<void> insertContact(RosterContact contact, String userEmail) async {
+    final db = await database;
+    final map = contact.toMap();
+    map['userEmail'] = userEmail;
+    await db.insert('contacts', map,
+        conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<List<RosterContact>> getContacts(String userEmail) async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'contacts',
+      where: 'userEmail = ?',
+      whereArgs: [userEmail],
+    );
+    return List.generate(maps.length, (i) => RosterContact.fromMap(maps[i]));
+  }
+
+  // ── Email Persistence ──────────────────────────────────────────────────────
 
   Future<void> insertEmails(
     List<EmailMessage> emails,

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:xmpp_stone/xmpp_stone.dart' as xmpp;
 import '../models/chat_message.dart';
 import '../models/roster_contact.dart';
+import 'database_service.dart';
+import 'notification_service.dart';
 
 enum XmppConnectionState { disconnected, connecting, connected, error }
 
@@ -13,8 +15,8 @@ class XmppService extends ChangeNotifier {
   factory XmppService() => _instance;
   XmppService._internal();
 
-  /// Dominio XMPP exclusivo del servicio.
   static const String _domain = 'vuelo.email';
+  final DatabaseService _db = DatabaseService();
 
   // ── Connection state ──────────────────────────────────────────────────────
   XmppConnectionState _connectionState = XmppConnectionState.disconnected;
@@ -43,6 +45,12 @@ class XmppService extends ChangeNotifier {
   List<ChatMessage> messagesFor(String jid) =>
       List.unmodifiable(_conversations[_bare(jid)] ?? []);
 
+  /// Returns true if there are unread messages in the conversation with [jid].
+  bool hasUnreadMessages(String jid) {
+    final msgs = _conversations[_bare(jid)] ?? [];
+    return msgs.any((m) => !m.isMe && !m.isRead);
+  }
+
   // ── Incoming message broadcast stream ─────────────────────────────────────
   final _messageController = StreamController<ChatMessage>.broadcast();
   Stream<ChatMessage> get messageStream => _messageController.stream;
@@ -50,7 +58,6 @@ class XmppService extends ChangeNotifier {
   // ── Public API ────────────────────────────────────────────────────────────
 
   /// Opens an XMPP connection to Openfire.
-  /// [username] can be just 'user' or 'user@vuelo.email'.
   Future<void> connect(
     String username,
     String password, {
@@ -67,6 +74,9 @@ class XmppService extends ChangeNotifier {
     _setConnectionState(XmppConnectionState.connecting);
 
     try {
+      // 1. Load data from local database
+      await _loadFromDatabase();
+
       final jidStr = '$localPart@$_domain/vuelo';
       final settings = xmpp.XmppAccountSettings.fromJid(jidStr, password);
       settings.host = host;
@@ -75,8 +85,6 @@ class XmppService extends ChangeNotifier {
 
       _connection = xmpp.Connection(settings);
 
-      // xmpp_stone auto-initializes handlers in Connection constructor,
-      // but we get the instances to listen to their streams.
       _messageHandler = xmpp.MessageHandler.getInstance(_connection!);
       _presenceManager = xmpp.PresenceManager.getInstance(_connection!);
       _rosterManager = xmpp.RosterManager.getInstance(_connection!);
@@ -85,6 +93,7 @@ class XmppService extends ChangeNotifier {
       _connection!.connectionStateStream.listen((state) {
         if (state == xmpp.XmppConnectionState.Ready) {
           _setConnectionState(XmppConnectionState.connected);
+          _rosterManager!.queryForRoster();
         } else if (state == xmpp.XmppConnectionState.Closed ||
             state == xmpp.XmppConnectionState.ForcefullyClosed) {
           _setConnectionState(XmppConnectionState.disconnected);
@@ -109,10 +118,19 @@ class XmppService extends ChangeNotifier {
           body: stanza.body!,
           timestamp: DateTime.now(),
           isMe: false,
+          isRead: false,
         );
         _addMessage(fromJid, msg);
         _messageController.add(msg);
         _ensureContact(fromJid);
+        _db.insertChatMessage(msg, _myBareJid);
+
+        // Show local notification
+        NotificationService().showNotification(
+          id: fromJid.hashCode,
+          title: 'Mensaje de ${fromJid.split('@').first}',
+          body: stanza.body!,
+        );
       });
 
       // ── Listen to Presence Updates ─────────────────────────────────────────
@@ -120,23 +138,17 @@ class XmppService extends ChangeNotifier {
         final fromJid = presenceData.jid?.userAtDomain ?? '';
         if (fromJid.isEmpty || fromJid == _myBareJid) return;
 
-        // PresenceManager: null showElement means 'Available' (Online).
-        // It uses PresenceShowElement.XA for 'Unavailable'.
         final bool online =
             presenceData.showElement != xmpp.PresenceShowElement.XA;
 
         _presenceMap[fromJid] = online;
+        _ensureContact(fromJid);
+
         final idx = _contacts.indexWhere((c) => c.jid == fromJid);
         if (idx != -1) {
           _contacts[idx].isOnline = online;
-        } else if (online) {
-          _contacts.add(RosterContact(
-            jid: fromJid,
-            name: fromJid.split('@').first,
-            isOnline: true,
-          ));
+          notifyListeners();
         }
-        notifyListeners();
       });
 
       // ── Listen to Roster changes ──────────────────────────────────────────
@@ -156,6 +168,22 @@ class XmppService extends ChangeNotifier {
     }
   }
 
+  Future<void> _loadFromDatabase() async {
+    _contacts.clear();
+    _conversations.clear();
+
+    final savedContacts = await _db.getContacts(_myBareJid);
+    _contacts.addAll(savedContacts);
+
+    final savedMessages = await _db.getChatMessages(_myBareJid);
+    for (var msg in savedMessages) {
+      final otherSide = msg.isMe ? msg.to : msg.from;
+      _conversations.putIfAbsent(otherSide, () => []);
+      _conversations[otherSide]!.add(msg);
+    }
+    notifyListeners();
+  }
+
   /// Sends a chat message to [toJid].
   void sendMessage(String toJid, String body) {
     if (_connection == null ||
@@ -163,11 +191,9 @@ class XmppService extends ChangeNotifier {
       return;
     }
 
-    final localPart = _bare(toJid).split('@').first;
-    final bareTargetStr = '$localPart@$_domain';
+    final bareTargetStr = formatJid(toJid);
     final targetJid = xmpp.Jid.fromFullJid(bareTargetStr);
 
-    // Using ChatManager for a more robust 1-to-1 chat flow
     final chatManager = xmpp.ChatManager.getInstance(_connection!);
     final chat = chatManager.getChat(targetJid);
     chat.sendMessage(body);
@@ -179,9 +205,31 @@ class XmppService extends ChangeNotifier {
       body: body,
       timestamp: DateTime.now(),
       isMe: true,
+      isRead: true,
     );
     _addMessage(bareTargetStr, msg);
     _ensureContact(bareTargetStr);
+    _db.insertChatMessage(msg, _myBareJid);
+  }
+
+  /// Marks all messages from [jid] as read.
+  Future<void> markAsRead(String jid) async {
+    final bareJid = _bare(jid);
+    final msgs = _conversations[bareJid];
+    if (msgs == null) return;
+
+    bool changed = false;
+    for (var m in msgs) {
+      if (!m.isMe && !m.isRead) {
+        m.isRead = true;
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await _db.markChatAsRead(bareJid, _myBareJid);
+      notifyListeners();
+    }
   }
 
   /// Disconnects from the XMPP server and resets all state.
@@ -197,12 +245,23 @@ class XmppService extends ChangeNotifier {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   void _ensureContact(String bareJid, {String? name}) {
-    if (!_contacts.any((c) => c.jid == bareJid)) {
-      _contacts.add(RosterContact(
+    final idx = _contacts.indexWhere((c) => c.jid == bareJid);
+    if (idx == -1) {
+      final newContact = RosterContact(
         jid: bareJid,
         name: name ?? bareJid.split('@').first,
         isOnline: _presenceMap[bareJid] ?? false,
-      ));
+      );
+      _contacts.add(newContact);
+      _db.insertContact(newContact, _myBareJid);
+      notifyListeners();
+    } else if (name != null && name.isNotEmpty && _contacts[idx].name != name) {
+      _contacts[idx] = RosterContact(
+        jid: bareJid,
+        name: name,
+        isOnline: _contacts[idx].isOnline,
+      );
+      _db.insertContact(_contacts[idx], _myBareJid);
       notifyListeners();
     }
   }
@@ -219,6 +278,12 @@ class XmppService extends ChangeNotifier {
   }
 
   String _bare(String jid) => jid.split('/').first;
+
+  /// Formats a username to a full JID if it's missing the domain.
+  String formatJid(String input) {
+    if (input.contains('@')) return input.toLowerCase();
+    return '$input@$_domain'.toLowerCase();
+  }
 
   @override
   void dispose() {

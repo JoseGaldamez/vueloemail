@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              authProvider.errorMessage ?? 'Error al iniciar sesión.',
+              'Error al iniciar sesión. Verifique sus credenciales.',
             ),
             backgroundColor: Colors.red,
           ),

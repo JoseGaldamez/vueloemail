@@ -5,6 +5,7 @@ import '../models/email_thread.dart';
 import '../services/mail_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../services/database_service.dart';
+import '../services/notification_service.dart';
 
 enum EmailState { initial, loading, loaded, empty, error }
 
@@ -80,6 +81,21 @@ class EmailProvider extends ChangeNotifier {
 
       // 2. Fetch IMAP updates
       final newEmails = await _mailService.fetchInbox(userEmail, password);
+
+      // Detect new emails for notifications
+      if (isBackground && _inbox.isNotEmpty && newEmails.isNotEmpty) {
+        final existingIds = _inbox.expand((t) => t.messages).map((m) => m.id).toSet();
+        
+        for (var email in newEmails) {
+          if (!existingIds.contains(email.id)) {
+            NotificationService().showNotification(
+              id: email.id.hashCode,
+              title: 'Nuevo correo de ${email.from}',
+              body: email.subject,
+            );
+          }
+        }
+      }
 
       // 3. Cache filtrado por usuario
       await dbService.insertEmails(newEmails, 'inbox', userEmail);

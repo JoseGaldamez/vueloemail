@@ -3,8 +3,34 @@ import 'package:provider/provider.dart';
 import '../../services/xmpp_service.dart';
 import '../instant/chat_screen.dart';
 
-class ContactListSheet extends StatelessWidget {
+class ContactListSheet extends StatefulWidget {
   const ContactListSheet({super.key});
+
+  @override
+  State<ContactListSheet> createState() => _ContactListSheetState();
+}
+
+class _ContactListSheetState extends State<ContactListSheet> {
+  final TextEditingController _controller = TextEditingController();
+
+  void _startChat(String input) {
+    if (input.trim().isEmpty) return;
+
+    final xmpp = context.read<XmppService>();
+    final fullJid = xmpp.formatJid(input.trim());
+    final displayName = fullJid.split('@').first;
+
+    Navigator.pop(context); // close sheet
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          jid: fullJid,
+          name: displayName,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +74,38 @@ class ContactListSheet extends StatelessWidget {
                 ],
               ),
             ),
-            const Divider(height: 1),
+
+            // Manual entry
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: TextField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  hintText: 'Usuario o JID (ej. juan@vuelo.email)',
+                  prefixIcon: const Icon(Icons.person_add_alt_1_outlined),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.send_rounded),
+                    color: Theme.of(context).colorScheme.primary,
+                    onPressed: () => _startChat(_controller.text),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                onSubmitted: _startChat,
+              ),
+            ),
+
+            const Divider(height: 20),
+
             // Contact list
             Expanded(
               child: contacts.isEmpty
@@ -136,5 +193,11 @@ class ContactListSheet extends StatelessWidget {
         );
       },
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 }

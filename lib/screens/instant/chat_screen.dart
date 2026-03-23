@@ -51,8 +51,13 @@ class _ChatScreenState extends State<ChatScreen> {
     final online = xmpp.isOnline(widget.jid);
     final messages = xmpp.messagesFor(widget.jid);
 
-    // Auto-scroll when messages arrive.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    // Auto-scroll and mark as read when messages arrive.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+      if (xmpp.hasUnreadMessages(widget.jid)) {
+        xmpp.markAsRead(widget.jid);
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(

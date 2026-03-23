@@ -47,7 +47,9 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(authProvider.errorMessage ?? 'Error al registrar.'),
+            content: Text(
+              'Error al registrar. Intente nuevamente con otro nombre de usuario.',
+            ),
             backgroundColor: Colors.red,
           ),
         );
