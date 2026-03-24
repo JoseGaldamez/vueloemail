@@ -32,7 +32,7 @@ class EmailProvider extends ChangeNotifier {
 
   void startPolling() {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 10), (_) {
       fetchInbox(isBackground: true);
     });
   }
@@ -84,8 +84,11 @@ class EmailProvider extends ChangeNotifier {
 
       // Detect new emails for notifications
       if (isBackground && _inbox.isNotEmpty && newEmails.isNotEmpty) {
-        final existingIds = _inbox.expand((t) => t.messages).map((m) => m.id).toSet();
-        
+        final existingIds = _inbox
+            .expand((t) => t.messages)
+            .map((m) => m.id)
+            .toSet();
+
         for (var email in newEmails) {
           if (!existingIds.contains(email.id)) {
             NotificationService().showNotification(
