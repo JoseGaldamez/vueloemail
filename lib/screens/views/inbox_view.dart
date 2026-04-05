@@ -107,95 +107,159 @@ class _InboxViewState extends State<InboxView> {
   Widget _buildEmailList(List<EmailThread> emails) {
     return RefreshIndicator(
       onRefresh: () => context.read<EmailProvider>().fetchInbox(),
-      child: ListView.separated(
+      color: const Color(0xFF0F223D),
+      backgroundColor: Colors.white,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(top: 8, bottom: 80), // Padding to clear FAB
         itemCount: emails.length,
-        separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final thread = emails[index];
           final latestEmail = thread.latestMessage;
           final isUnread = thread.isUnread;
 
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: isUnread ? Colors.white : const Color(0xFFFAFAFA),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isUnread ? const Color(0xFFE2E8F0) : Colors.transparent,
+                width: 1,
+              ),
+              boxShadow: [
+                if (isUnread)
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+              ],
             ),
-            leading: CircleAvatar(
-              backgroundColor: const Color(0xFFE8ECEF),
-              child: Text(
-                latestEmail.from.isNotEmpty ? latestEmail.from[0].toUpperCase() : '?',
-                style: const TextStyle(
-                  color: Color(0xFF0F223D),
-                  fontWeight: FontWeight.bold,
+            padding: const EdgeInsets.all(2), // Slight padding to clip inner material ripple
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () {
+                  context.read<EmailProvider>().markAsRead(thread.id);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ThreadDetailScreen(thread: thread),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Avatar
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: isUnread 
+                          ? const Color(0xFFE8ECEF) 
+                          : const Color(0xFFEDF2F7),
+                        child: Text(
+                          latestEmail.from.isNotEmpty ? latestEmail.from[0].toUpperCase() : '?',
+                          style: TextStyle(
+                            color: isUnread ? const Color(0xFF0F223D) : const Color(0xFF6B7280),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Text Content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    thread.sendersPreview(),
+                                    style: TextStyle(
+                                      fontWeight: isUnread ? FontWeight.w700 : FontWeight.w600,
+                                      color: isUnread ? const Color(0xFF0F223D) : const Color(0xFF6B7280),
+                                      fontSize: 16,
+                                      letterSpacing: -0.3,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (thread.messages.length > 1)
+                                  Container(
+                                    margin: const EdgeInsets.only(left: 8, right: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEDF2F7),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      thread.messages.length.toString(),
+                                      style: const TextStyle(
+                                        fontSize: 12, 
+                                        color: Color(0xFF6B7280), 
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                Text(
+                                  _formatDate(thread.lastMessageDate),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isUnread ? const Color(0xFFF1653B) : const Color(0xFFA0AEC0),
+                                    fontWeight: isUnread ? FontWeight.bold : FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              thread.subject,
+                              style: TextStyle(
+                                fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
+                                color: isUnread ? const Color(0xFF1E2632) : const Color(0xFF4A5568),
+                                fontSize: 14,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              latestEmail.body, // Showing preview snippet
+                              style: const TextStyle(
+                                color: Color(0xFFA0AEC0),
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Optional unread dot indicator
+                      if (isUnread) ...[
+                         const SizedBox(width: 8),
+                         Container(
+                           margin: const EdgeInsets.only(top: 8),
+                           width: 8,
+                           height: 8,
+                           decoration: const BoxDecoration(
+                             color: Color(0xFFF1653B),
+                             shape: BoxShape.circle,
+                           ),
+                         ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    thread.sendersPreview(),
-                    style: TextStyle(
-                      fontWeight: isUnread ? FontWeight.bold : FontWeight.w500,
-                      color: isUnread ? Colors.black : Colors.grey.shade800,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (thread.messages.length > 1)
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      thread.messages.length.toString(),
-                      style: TextStyle(
-                        fontSize: 12, 
-                        color: Colors.grey.shade700, 
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                Text(
-                  _formatDate(thread.lastMessageDate),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isUnread ? const Color(0xFFF1653B) : Colors.grey,
-                    fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-              ],
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(
-                  thread.subject,
-                  style: TextStyle(
-                    fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-              ],
-            ),
-            onTap: () {
-              context.read<EmailProvider>().markAsRead(thread.id);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ThreadDetailScreen(thread: thread),
-                ),
-              );
-            },
           );
         },
       ),

@@ -82,9 +82,9 @@ class InstantView extends StatelessWidget {
 
     final jids = conversations.keys.toList();
 
-    return ListView.separated(
+    return ListView.builder(
+      padding: const EdgeInsets.only(top: 8, bottom: 80),
       itemCount: jids.length,
-      separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final jid = jids[index];
         final msgs = conversations[jid]!;
@@ -92,92 +92,140 @@ class InstantView extends StatelessWidget {
         final contact = _findContact(xmpp.contacts, jid);
         final isUnread = xmpp.hasUnreadMessages(jid);
 
-        return ListTile(
-          leading: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: Text(
-                  contact.displayName.isNotEmpty
-                      ? contact.displayName[0].toUpperCase()
-                      : '?',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onPrimaryContainer,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: xmpp.isOnline(jid)
-                        ? Colors.green
-                        : Colors.grey.shade400,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                ),
-              ),
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: isUnread ? Colors.white : const Color(0xFFFAFAFA),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isUnread ? const Color(0xFFE2E8F0) : Colors.transparent,
+              width: 1,
+            ),
+            boxShadow: [
+              if (isUnread)
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
             ],
           ),
-          title: Text(
-            contact.displayName,
-            style: TextStyle(
-              fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
-              color: isUnread ? Colors.black : Colors.black87,
-            ),
-          ),
-          subtitle: Text(
-            lastMsg.isMe ? 'Tú: ${lastMsg.body}' : lastMsg.body,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
-              color: isUnread ? Colors.black87 : Colors.grey.shade600,
-            ),
-          ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                _formatTime(lastMsg.timestamp),
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isUnread
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.grey.shade500,
-                  fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-              if (isUnread) ...[
-                const SizedBox(height: 4),
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary,
-                    shape: BoxShape.circle,
+          padding: const EdgeInsets.all(2),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                xmpp.markAsRead(jid);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ChatScreen(jid: jid, name: contact.displayName),
                   ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: isUnread 
+                            ? const Color(0xFFE8ECEF) 
+                            : const Color(0xFFEDF2F7),
+                          child: Text(
+                            contact.displayName.isNotEmpty
+                                ? contact.displayName[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              color: isUnread ? const Color(0xFF0F223D) : const Color(0xFF6B7280),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: -2,
+                          right: -2,
+                          child: Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: xmpp.isOnline(jid)
+                                  ? const Color(0xFF38A169) // Modern green
+                                  : const Color(0xFFA0AEC0),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2.5),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            contact.displayName,
+                            style: TextStyle(
+                              fontWeight: isUnread ? FontWeight.w700 : FontWeight.w600,
+                              color: isUnread ? const Color(0xFF0F223D) : const Color(0xFF1E2632),
+                              fontSize: 16,
+                              letterSpacing: -0.3,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            lastMsg.isMe ? 'Tú: ${lastMsg.body}' : lastMsg.body,
+                            style: TextStyle(
+                              fontWeight: isUnread ? FontWeight.w600 : FontWeight.w400,
+                              color: isUnread ? const Color(0xFF4A5568) : const Color(0xFFA0AEC0),
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          _formatTime(lastMsg.timestamp),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isUnread
+                                ? const Color(0xFFF1653B)
+                                : const Color(0xFFA0AEC0),
+                            fontWeight: isUnread ? FontWeight.bold : FontWeight.w500,
+                          ),
+                        ),
+                        if (isUnread) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF1653B),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ],
-          ),
-          onTap: () {
-            xmpp.markAsRead(jid);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ChatScreen(jid: jid, name: contact.displayName),
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );

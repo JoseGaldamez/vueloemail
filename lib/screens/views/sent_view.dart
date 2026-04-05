@@ -95,97 +95,134 @@ class _SentViewState extends State<SentView> {
   Widget _buildEmailList(List<EmailThread> emails) {
     return RefreshIndicator(
       onRefresh: () => context.read<EmailProvider>().fetchSent(),
-      child: ListView.separated(
+      color: const Color(0xFF0F223D),
+      backgroundColor: Colors.white,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(top: 8, bottom: 80),
         itemCount: emails.length,
-        separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final thread = emails[index];
           final latestEmail = thread.latestMessage;
 
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: const Color(0xFFEDF2F7),
+                width: 1,
+              ),
             ),
-            leading: CircleAvatar(
-              backgroundColor: Colors.grey.shade200,
-              child: Text(
-                latestEmail.to.isNotEmpty
-                    ? latestEmail.to[0].toUpperCase()
-                    : '?',
-                style: TextStyle(
-                  color: Colors.grey.shade800,
-                  fontWeight: FontWeight.bold,
+            padding: const EdgeInsets.all(2),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ThreadDetailScreen(thread: thread),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Avatar
+                      CircleAvatar(
+                        radius: 22,
+                        backgroundColor: const Color(0xFFEDF2F7),
+                        child: Text(
+                          latestEmail.to.isNotEmpty ? latestEmail.to[0].toUpperCase() : '?',
+                          style: const TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      // Text Content
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    'Para: ${latestEmail.to}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF4A5568),
+                                      fontSize: 15,
+                                      letterSpacing: -0.2,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (thread.messages.length > 1)
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEDF2F7),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      thread.messages.length.toString(),
+                                      style: const TextStyle(
+                                        fontSize: 12, 
+                                        color: Color(0xFF6B7280), 
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                Text(
+                                  _formatDate(thread.lastMessageDate),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFFA0AEC0),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              thread.subject,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF4A5568),
+                                fontSize: 14,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              latestEmail.body,
+                              style: const TextStyle(
+                                color: Color(0xFFA0AEC0),
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    'Para: ${latestEmail.to}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey.shade800,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                if (thread.messages.length > 1)
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      thread.messages.length.toString(),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade700,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                Text(
-                  _formatDate(thread.lastMessageDate),
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text(
-                  thread.subject,
-                  style: const TextStyle(color: Colors.black87),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  latestEmail.body,
-                  style: TextStyle(color: Colors.grey.shade600),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ThreadDetailScreen(thread: thread),
-                ),
-              );
-            },
           );
         },
       ),

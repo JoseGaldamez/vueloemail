@@ -7,6 +7,7 @@ import 'views/inbox_view.dart';
 import 'views/instant_view.dart';
 import 'views/sent_view.dart';
 import 'login_screen.dart';
+import 'about_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -20,7 +21,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   EmailProvider? _emailProvider;
 
   // Tab pages
-  static const List<Widget> _views = [InboxView(), InstantView()];
+  static const List<Widget> _views = [InboxView(), SentView(), InstantView()];
 
   @override
   void initState() {
@@ -67,11 +68,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  void _openSent() {
+  void _openAbout() {
     Navigator.pop(context); // close drawer
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const Scaffold(body: SentView())),
+      MaterialPageRoute(builder: (_) => const AboutScreen()),
     );
   }
 
@@ -93,18 +94,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
       drawer: _buildDrawer(emailDisplay),
       body: _views[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTabTapped,
-        items: const [
-          BottomNavigationBarItem(
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: _onTabTapped,
+        destinations: const [
+          NavigationDestination(
             icon: Icon(Icons.mail_outline),
-            activeIcon: Icon(Icons.mail),
-            label: 'Bandeja',
+            selectedIcon: Icon(Icons.mail),
+            label: 'Entrada',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
+            icon: Icon(Icons.send_outlined),
+            selectedIcon: Icon(Icons.send),
+            label: 'Enviados',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.chat_bubble_outline),
-            activeIcon: Icon(Icons.chat_bubble),
+            selectedIcon: Icon(Icons.chat_bubble),
             label: 'Instantáneo',
           ),
         ],
@@ -121,12 +127,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: EdgeInsets.zero,
         children: [
           UserAccountsDrawerHeader(
-            decoration: const BoxDecoration(color: Color(0xFF0056D2)),
-            accountName: const Text('Cuenta Activa'),
-            accountEmail: Text(emailDisplay),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Color(0xFFEDF2F7))),
+            ),
+            accountName: const Text(
+              'Cuenta Activa',
+              style: TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+            ),
+            accountEmail: Text(
+              emailDisplay,
+              style: const TextStyle(
+                color: Color(0xFF0F223D),
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
             currentAccountPicture: const CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Icon(Icons.person, color: Color(0xFF0056D2), size: 40),
+              backgroundColor: Color(0xFF0F223D),
+              child: Icon(Icons.person, color: Colors.white, size: 36),
             ),
           ),
           // XMPP status badge
@@ -165,16 +184,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ListTile(
             leading: const Icon(Icons.send_outlined),
             title: const Text('Enviados'),
-            onTap: _openSent,
-          ),
-          ListTile(
-            leading: const Icon(Icons.chat_bubble_outline),
-            title: const Text('Instantáneo'),
             selected: _currentIndex == 1,
             onTap: () {
               Navigator.pop(context);
               _onTabTapped(1);
             },
+          ),
+          ListTile(
+            leading: const Icon(Icons.chat_bubble_outline),
+            title: const Text('Instantáneo'),
+            selected: _currentIndex == 2,
+            onTap: () {
+              Navigator.pop(context);
+              _onTabTapped(2);
+            },
+          ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.info_outline),
+            title: const Text('Acerca de'),
+            onTap: _openAbout,
           ),
           const Divider(),
           ListTile(

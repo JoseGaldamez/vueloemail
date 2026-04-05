@@ -121,8 +121,9 @@ class XmppService extends ChangeNotifier with WidgetsBindingObserver {
       // ── Listener: Mensajes Entrantes ──
       _subscriptions.add(
         _messageHandler!.messagesStream.listen((stanza) {
-          if (stanza == null || stanza.body == null || stanza.body!.isEmpty)
+          if (stanza == null || stanza.body == null || stanza.body!.isEmpty) {
             return;
+          }
 
           final fromJid = stanza.fromJid?.userAtDomain ?? '';
           if (fromJid.isEmpty || fromJid == _myBareJid) return;
@@ -215,8 +216,9 @@ class XmppService extends ChangeNotifier with WidgetsBindingObserver {
 
   void sendMessage(String toJid, String body) {
     if (_connection == null ||
-        _connectionState != XmppConnectionState.connected)
+        _connectionState != XmppConnectionState.connected) {
       return;
+    }
 
     final bareTargetStr = formatJid(toJid);
     final targetJid = xmpp.Jid.fromFullJid(bareTargetStr);
